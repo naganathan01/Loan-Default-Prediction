@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.impute import KNNImputer
+from sklearn.impute import KNNImputer, SimpleImputer
 import yaml
+import os
 
 class DataPreprocessor:
     def __init__(self, config_path="config.yaml"):
@@ -13,67 +14,116 @@ class DataPreprocessor:
         
     def load_data(self):
         """Load the dataset"""
-        df = pd.read_csv(self.config['data']['raw_data_path'])
+        data_path = self.config['data']['raw_data_path']
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Dataset not found at {data_path}. Please place Dataset.csv in data/raw/")
+        
+        df = pd.read_csv(data_path)
+        print(f"Data loaded successfully. Shape: {df.shape}")
         return df
     
     def handle_missing_values(self, df):
         """Handle missing values based on missing percentage"""
-        missing_thresh = 0.5  # 50% threshold
+        missing_thresh_high = 0.5  # 50% threshold
+        missing_thresh_medium = 0.15  # 15% threshold
+        
+        print("Handling missing values...")
         
         for column in df.columns:
-            missing_pct = df[column].isnull().sum() / len(df)
+            if column in ['ID', 'Default']:  # Skip ID and target
+                continue
+                
+            missing_count = df[column].isnull().sum()
+            missing_pct = missing_count / len(df)
             
-            if missing_pct > missing_thresh:
-                # Create missing indicator
+            if missing_count > 0:
+                print(f"  {column}: {missing_count} missing ({missing_pct:.2%})")
+            
+            if missing_pct > missing_thresh_high:
+                # Create missing indicator for high missing columns
                 df[f'{column}_missing'] = df[column].isnull().astype(int)
+                
                 # Fill with median for numerical, mode for categorical
                 if df[column].dtype in ['int64', 'float64']:
-                    df[column].fillna(df[column].median(), inplace=True)
+                    fill_value = df[column].median()
+                    df[column].fillna(fill_value, inplace=True)
                 else:
-                    df[column].fillna(df[column].mode()[0] if not df[column].mode().empty else 'Unknown', inplace=True)
+                    mode_values = df[column].mode()
+                    fill_value = mode_values[0] if len(mode_values) > 0 else 'Unknown'
+                    df[column].fillna(fill_value, inplace=True)
             
-            elif missing_pct > 0.15:  # 15-50% missing
+            elif missing_pct > missing_thresh_medium:
+                # Medium missing: simple imputation
                 if df[column].dtype in ['int64', 'float64']:
-                    df[column].fillna(df[column].median(), inplace=True)
+                    fill_value = df[column].median()
+                    df[column].fillna(fill_value, inplace=True)
                 else:
                     df[column].fillna('Unknown', inplace=True)
             
-            elif missing_pct > 0:  # <15% missing - use KNN
+            elif missing_pct > 0:
+                # Low missing: KNN imputation for numerical, mode for categorical
                 if df[column].dtype in ['int64', 'float64']:
-                    imputer = KNNImputer(n_neighbors=5)
-                    df[[column]] = imputer.fit_transform(df[[column]])
+                    # Use SimpleImputer as backup if KNN fails
+                    try:
+                        imputer = KNNImputer(n_neighbors=5)
+                        df[[column]] = imputer.fit_transform(df[[column]])
+                    except:
+                        df[column].fillna(df[column].median(), inplace=True)
                 else:
-                    df[column].fillna(df[column].mode()[0] if not df[column].mode().empty else 'Unknown', inplace=True)
+                    mode_values = df[column].mode()
+                    fill_value = mode_values[0] if len(mode_values) > 0 else 'Unknown'
+                    df[column].fillna(fill_value, inplace=True)
         
         return df
     
     def handle_outliers(self, df, columns):
         """Handle outliers using IQR method"""
+        print("Handling outliers...")
+        
         for column in columns:
             if column in df.columns and df[column].dtype in ['int64', 'float64']:
                 Q1 = df[column].quantile(0.25)
                 Q3 = df[column].quantile(0.75)
                 IQR = Q3 - Q1
-                lower_bound = Q1 - 1.5 * IQR
-                upper_bound = Q3 + 1.5 * IQR
-                df[column] = df[column].clip(lower_bound, upper_bound)
+                
+                if IQR > 0:  # Avoid division by zero
+                    lower_bound = Q1 - 1.5 * IQR
+                    upper_bound = Q3 + 1.5 * IQR
+                    
+                    outliers_before = ((df[column] < lower_bound) | (df[column] > upper_bound)).sum()
+                    df[column] = df[column].clip(lower_bound, upper_bound)
+                    
+                    if outliers_before > 0:
+                        print(f"  {column}: {outliers_before} outliers clipped")
+        
         return df
     
     def preprocess_data(self, df):
         """Complete preprocessing pipeline"""
-        print("Starting data preprocessing...")
+        print("\n=== Starting Data Preprocessing ===")
         
         # Handle missing values
         df = self.handle_missing_values(df)
         print("✓ Missing values handled")
         
         # Handle outliers for key numerical features
-        numerical_features = ['Client_Income', 'Credit_Amount', 'Age_Days', 'Employed_Days']
-        df = self.handle_outliers(df, numerical_features)
-        print("✓ Outliers handled")
+        numerical_features = []
+        potential_features = ['Client_Income', 'Credit_Amount', 'Age_Days', 'Employed_Days']
+        
+        for feat in potential_features:
+            if feat in df.columns:
+                numerical_features.append(feat)
+        
+        if numerical_features:
+            df = self.handle_outliers(df, numerical_features)
+            print("✓ Outliers handled")
+        
+        # Ensure processed directory exists
+        processed_dir = self.config['data']['processed_data_path']
+        os.makedirs(processed_dir, exist_ok=True)
         
         # Save processed data
-        processed_path = f"{self.config['data']['processed_data_path']}processed_data.csv"
+        processed_path = f"{processed_dir}processed_data.csv"
         df.to_csv(processed_path, index=False)
         print(f"✓ Processed data saved to {processed_path}")
         
@@ -83,4 +133,5 @@ if __name__ == "__main__":
     preprocessor = DataPreprocessor()
     df = preprocessor.load_data()
     processed_df = preprocessor.preprocess_data(df)
-    print(f"Data shape after preprocessing: {processed_df.shape}")
+    print(f"\nData shape after preprocessing: {processed_df.shape}")
+    print(f"Columns: {list(processed_df.columns)}")
