@@ -1,0 +1,131 @@
+PS E:\&%A\master-project-task\Loan-Default-Prediction> python main.py
+=== LOAN DEFAULT PREDICTION PIPELINE ===
+✅ Created necessary directories
+
+1. Data Preprocessing...
+E:\&%A\master-project-task\Loan-Default-Prediction\src\data_preprocessing.py:21: DtypeWarning: Columns (1,7,8,16,17,18,19,20,35) have mixed types. Specify dtype option on import or set low_memory=False.
+  df = pd.read_csv(data_path)
+Data loaded successfully. Shape: (121856, 40)
+   ✅ Loaded dataset with shape: (121856, 40)
+
+=== Starting Data Preprocessing ===
+Handling missing values...
+  Client_Income: 3607 missing (2.96%)
+  Car_Owned: 3581 missing (2.94%)
+  Bike_Owned: 3624 missing (2.97%)
+  Active_Loan: 3635 missing (2.98%)
+  House_Own: 3661 missing (3.00%)
+  Child_Count: 3638 missing (2.99%)
+  Credit_Amount: 3632 missing (2.98%)
+  Loan_Annuity: 4812 missing (3.95%)
+  Accompany_Client: 1746 missing (1.43%)
+  Client_Income_Type: 3701 missing (3.04%)
+  Client_Education: 3645 missing (2.99%)
+  Client_Marital_Status: 3473 missing (2.85%)
+  Client_Gender: 2413 missing (1.98%)
+  Loan_Contract_Type: 3651 missing (3.00%)
+  Client_Housing_Type: 3687 missing (3.03%)
+  Population_Region_Relative: 4857 missing (3.99%)
+  Age_Days: 3600 missing (2.95%)
+  Employed_Days: 3649 missing (2.99%)
+  Registration_Days: 3614 missing (2.97%)
+  ID_Days: 5968 missing (4.90%)
+  Own_House_Age: 80095 missing (65.73%)
+  Client_Occupation: 41435 missing (34.00%)
+  Client_Family_Members: 2410 missing (1.98%)
+  Cleint_City_Rating: 2409 missing (1.98%)
+  Application_Process_Day: 2428 missing (1.99%)
+  Application_Process_Hour: 3663 missing (3.01%)
+  Type_Organization: 3609 missing (2.96%)
+  Score_Source_1: 68835 missing (56.49%)
+  Score_Source_2: 5686 missing (4.67%)
+  Score_Source_3: 26921 missing (22.09%)
+  Social_Circle_Default: 61928 missing (50.82%)
+  Phone_Change: 3664 missing (3.01%)
+  Credit_Bureau: 18540 missing (15.21%)
+✓ Missing values handled
+Handling outliers...
+✓ Outliers handled
+✓ Processed data saved to data/processed/processed_data.csv
+   ✅ Processed data shape: (121856, 43)
+
+2. Feature Engineering...
+
+=== Creating New Features ===
+✓ Age_Years created
+✓ Employment features created
+✓ Debt_to_Income ratio created
+✓ Annuity_to_Income ratio created
+✓ Credit_to_Annuity ratio created
+✓ Total_Assets created
+✓ Risk_Score created
+✓ Income_per_Family_Member created
+
+=== Encoding Categorical Features ===
+Encoding Accompany_Client...
+Encoding Client_Income_Type...
+Encoding Client_Education...
+Encoding Client_Marital_Status...
+Encoding Client_Gender...
+Encoding Loan_Contract_Type...
+Encoding Client_Housing_Type...
+Encoding Population_Region_Relative...
+Encoding Registration_Days...
+Encoding ID_Days...
+Encoding Client_Occupation...
+Encoding Client_Permanent_Match_Tag...
+Encoding Client_Contact_Work_Tag...
+Encoding Type_Organization...
+Encoding Score_Source_3...
+✓ 15 categorical features encoded
+   ✅ Final feature set shape: (121856, 52)
+
+3. Model Training...
+2025/07/03 19:31:51 INFO mlflow.tracking.fluent: Experiment with name 'loan_default_prediction' does not exist. Creating a new experiment.
+   ✅ Training set: (97484, 50), Test set: (24372, 50)
+Original distribution: [89608  7876]
+Resampled distribution: [61182 40436]
+
+=== Scaling Features ===
+Scaling 50 numerical features
+
+Training Logistic Regression...
+Logistic Regression CV AUC: 0.8528 (+/- 0.1714)
+
+Training Random Forest...
+Random Forest CV AUC: 0.9697 (+/- 0.1181)
+C:\Python311\Lib\site-packages\_distutils_hack\__init__.py:15: UserWarning: Distutils was imported before Setuptools, but importing Setuptools also replaces the `distutils` module in `sys.modules`. This may lead to undesirable behaviors or errors. To avoid these issues, avoid using distutils directly, ensure that setuptools is installed in the traditional way (e.g. not an editable install), and/or make sure that setuptools is always imported before distutils.
+  warnings.warn(
+C:\Python311\Lib\site-packages\_distutils_hack\__init__.py:30: UserWarning: Setuptools is replacing distutils. Support for replacing an already imported distutils is deprecated. In the future, this condition will fail. Register concerns at https://github.com/pypa/setuptools/issues/new?template=distutils-deprecation.yml
+  warnings.warn(
+
+Training XGBoost...
+XGBoost CV AUC: 0.9564 (+/- 0.1686)
+C:\Python311\Lib\site-packages\_distutils_hack\__init__.py:15: UserWarning: Distutils was imported before Setuptools, but importing Setuptools also replaces the `distutils` module in `sys.modules`. This may lead to undesirable behaviors or errors. To avoid these issues, avoid using distutils directly, ensure that setuptools is installed in the traditional way (e.g. not an editable install), and/or make sure that setuptools is always imported before distutils.
+  warnings.warn(
+C:\Python311\Lib\site-packages\_distutils_hack\__init__.py:30: UserWarning: Setuptools is replacing distutils. Support for replacing an already imported distutils is deprecated. In the future, this condition will fail. Register concerns at https://github.com/pypa/setuptools/issues/new?template=distutils-deprecation.yml
+  warnings.warn(
+
+Best model: Random Forest with AUC: 0.9697
+Model saved to data/models/best_model_Random Forest.joblib
+
+4. Model Evaluation...
+=== MODEL EVALUATION RESULTS ===
+AUC-ROC: 0.7466
+AUC-PR: 0.3095
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.93      0.99      0.96     22403
+           1       0.67      0.13      0.22      1969
+
+    accuracy                           0.92     24372
+   macro avg       0.80      0.56      0.59     24372
+weighted avg       0.91      0.92      0.90     24372
+
+
+=== PIPELINE COMPLETED SUCCESSFULLY ===
+Best Model: Random Forest
+Model saved at: data/models/best_model_Random Forest.joblib
+AUC-ROC Score: 0.7466
