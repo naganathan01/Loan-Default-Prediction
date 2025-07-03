@@ -1,0 +1,24 @@
+# Raw datasets
+data/raw/
+data/models/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment files
+venv/
+.env
+
+# VSCode and other IDE settings
+.vscode/
+*.code-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+
